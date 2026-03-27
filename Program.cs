@@ -91,7 +91,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+builder.WebHost.UseUrls("http://0.0.0.0:5265");
 //app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseAuthentication();
