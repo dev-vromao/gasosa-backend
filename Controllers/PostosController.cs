@@ -21,13 +21,9 @@ namespace gasosa_backend.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetMeusPostos()
+        public async Task<IActionResult> GetPostos()
         {
-            var usuarioId = GetUsuarioId();
-            if (usuarioId == null) return Unauthorized("Token inválido.");
-
             var postos = await _context.Postos
-                .Where(p => p.UsuarioId == usuarioId)
                 .Select(p => new PostoDto
                 {
                     Id = p.Id,
@@ -44,11 +40,8 @@ namespace gasosa_backend.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetPostoById([FromRoute] int id)
         {
-            var usuarioId = GetUsuarioId();
-            if (usuarioId == null) return Unauthorized("Token inválido.");
-
             var posto = await _context.Postos
-                .Where(p => p.Id == id && p.UsuarioId == usuarioId)
+                .Where(p => p.Id == id)
                 .Select(p => new PostoDto
                 {
                     Id = p.Id,
@@ -70,6 +63,22 @@ namespace gasosa_backend.Controllers
             if (!ModelState.IsValid) return BadRequest(ModelState);
             if (!CoordenadasValidas(dto.Latitude, dto.Longitude))
                 return BadRequest("Latitude/Longitude inválidas.");
+
+            var postosMesmoNome = await _context.Postos
+                .Where(p => p.Nome == dto.Nome)
+                .ToListAsync();
+
+            foreach (var existente in postosMesmoNome)
+            {
+                var distancia = CalcularDistanciaEmMetros(
+                    existente.Latitude,
+                    existente.Longitude,
+                    dto.Latitude,
+                    dto.Longitude);
+
+                if (distancia < 20)
+                    return BadRequest("Já existe um posto com esse nome muito próximo desta localização.");
+            }
 
             var usuarioId = GetUsuarioId();
             if (usuarioId == null) return Unauthorized("Token inválido.");
@@ -123,6 +132,28 @@ namespace gasosa_backend.Controllers
         private static bool CoordenadasValidas(decimal latitude, decimal longitude)
         {
             return latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+        }
+
+        private static double CalcularDistanciaEmMetros(decimal latitude1, decimal longitude1, decimal latitude2, decimal longitude2)
+        {
+            const double raioTerraMetros = 6371000d;
+
+            var lat1Rad = GrausParaRadianos((double)latitude1);
+            var lat2Rad = GrausParaRadianos((double)latitude2);
+            var deltaLat = GrausParaRadianos((double)(latitude2 - latitude1));
+            var deltaLon = GrausParaRadianos((double)(longitude2 - longitude1));
+
+            var a = System.Math.Sin(deltaLat / 2) * System.Math.Sin(deltaLat / 2) +
+                    System.Math.Cos(lat1Rad) * System.Math.Cos(lat2Rad) *
+                    System.Math.Sin(deltaLon / 2) * System.Math.Sin(deltaLon / 2);
+
+            var c = 2 * System.Math.Atan2(System.Math.Sqrt(a), System.Math.Sqrt(1 - a));
+            return raioTerraMetros * c;
+        }
+
+        private static double GrausParaRadianos(double graus)
+        {
+            return graus * (System.Math.PI / 180d);
         }
     }
 }

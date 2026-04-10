@@ -3,6 +3,7 @@ using gasosa_backend.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace gasosa_backend.Controllers
 {
@@ -43,18 +44,34 @@ namespace gasosa_backend.Controllers
             });
         }
 
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            return NoContent();
+        }
+
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Normaliza CPF (apenas dígitos)
+            var cpfNumeros = new string(registerDto.CPF?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());
+
+            // Garante apenas que o CPF tenha 11 dígitos numéricos
+            if (cpfNumeros.Length != 11)
+            {
+                return BadRequest("CPF deve conter exatamente 11 dígitos");
+            }
+
             var usuario = new Usuario
             {
                 UserName = registerDto.Email,
                 Email = registerDto.Email,
                 Nome = registerDto.Nome,
-                CPF = registerDto.CPF,
+                CPF = cpfNumeros,
                 DataNascimento = registerDto.DataNascimento
             };
 
@@ -75,5 +92,6 @@ namespace gasosa_backend.Controllers
                 return StatusCode(500, createdUser.Errors);
             }
         }
+
     }
 }
