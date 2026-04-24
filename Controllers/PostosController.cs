@@ -23,6 +23,7 @@ namespace gasosa_backend.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetPostos()
         {
             var postos = await _context.Postos
@@ -40,6 +41,7 @@ namespace gasosa_backend.Controllers
         }
 
         [HttpGet("{id:int}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetPostoById([FromRoute] int id)
         {
             var posto = await _context.Postos
@@ -60,6 +62,7 @@ namespace gasosa_backend.Controllers
         }
 
         [HttpGet("{id:int}/fotos")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetFotosDoPosto([FromRoute] int id)
         {
             var fotos = await _context.PostoFotos
@@ -173,7 +176,6 @@ namespace gasosa_backend.Controllers
 
             return CreatedAtAction(nameof(GetPostoById), new { id = posto.Id }, response);
         }
-
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeletePosto([FromRoute] int id)
