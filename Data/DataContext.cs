@@ -10,6 +10,8 @@ public class DataContext : IdentityDbContext<Usuario>
 
     public DbSet<Avaliacao> Avaliacoes => Set<Avaliacao>();
 
+    public DbSet<PostoFoto> PostoFotos { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
