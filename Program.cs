@@ -51,7 +51,8 @@ builder.Services.AddIdentity<Usuario, IdentityRole>(options =>
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 8;
 })
-.AddEntityFrameworkStores<DataContext>();
+.AddEntityFrameworkStores<DataContext>()
+.AddDefaultTokenProviders();
 
 builder.Services.AddAuthentication(options =>
 {

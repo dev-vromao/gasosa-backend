@@ -2,8 +2,10 @@
 using gasosa_backend.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Text;
 
 namespace gasosa_backend.Controllers
 {
@@ -14,12 +16,18 @@ namespace gasosa_backend.Controllers
         private readonly UserManager<Usuario> _userManager;
         private readonly ITokenService _tokenService;
         private readonly SignInManager<Usuario> _signInManager;
+        private readonly IWebHostEnvironment _environment;
 
-        public AccountController(UserManager<Usuario> userManager, ITokenService tokenService, SignInManager<Usuario> signInManager)
+        public AccountController(
+            UserManager<Usuario> userManager,
+            ITokenService tokenService,
+            SignInManager<Usuario> signInManager,
+            IWebHostEnvironment environment)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _signInManager = signInManager;
+            _environment = environment;
         }
 
         [HttpPost("login")]
@@ -39,7 +47,7 @@ namespace gasosa_backend.Controllers
             return Ok(new NewUserDto
             {
                 Nome = user.Nome,
-                Email = user.Email,
+                Email = user.Email ?? string.Empty,
                 Token = _tokenService.CreateToken(user)
             });
         }
@@ -57,10 +65,8 @@ namespace gasosa_backend.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Normaliza CPF (apenas dígitos)
             var cpfNumeros = new string(registerDto.CPF?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());
 
-            // Garante apenas que o CPF tenha 11 dígitos numéricos
             if (cpfNumeros.Length != 11)
             {
                 return BadRequest("CPF deve conter exatamente 11 dígitos");
@@ -83,7 +89,7 @@ namespace gasosa_backend.Controllers
                 return Ok(new NewUserDto
                 {
                     Nome = usuario.Nome,
-                    Email = usuario.Email,
+                    Email = usuario.Email ?? string.Empty,
                     Token = _tokenService.CreateToken(usuario)
                 });
             }
@@ -91,6 +97,55 @@ namespace gasosa_backend.Controllers
             {
                 return StatusCode(500, createdUser.Errors);
             }
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(forgotPasswordDto.Email);
+
+            if (user == null)
+            {
+                return Ok(new
+                {
+                    message = "Se o email estiver cadastrado, você receberá instruções para redefinir a senha."
+                });
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            return Ok(new
+            {
+                message = "Token gerado com sucesso",
+                token = token,
+                email = user.Email
+            });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(resetPasswordDto.Email);
+            if (user == null)
+            {
+                return BadRequest("Token inválido ou usuário não encontrado.");
+            }
+
+            var resultado = await _userManager.ResetPasswordAsync(user, resetPasswordDto.Token, resetPasswordDto.NewPassword);
+
+
+            if (!resultado.Succeeded)
+            {
+                return BadRequest(resultado.Errors.Select(error => error.Description));
+            }
+
+            return Ok(new { message = "Senha redefinida com sucesso." });
         }
 
     }
