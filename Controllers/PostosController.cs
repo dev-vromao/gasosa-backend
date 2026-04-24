@@ -14,10 +14,12 @@ namespace gasosa_backend.Controllers
     public class PostosController : ControllerBase
     {
         private readonly DataContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public PostosController(DataContext context)
+        public PostosController(DataContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         [HttpGet]
@@ -55,6 +57,71 @@ namespace gasosa_backend.Controllers
             if (posto == null) return NotFound("Posto não encontrado.");
 
             return Ok(posto);
+        }
+
+        [HttpGet("{id:int}/fotos")]
+        public async Task<IActionResult> GetFotosDoPosto([FromRoute] int id)
+        {
+            var fotos = await _context.PostoFotos
+                .Where(f => f.PostoId == id)
+                .Select(f => f.UrlImagem)
+                .ToListAsync();
+
+            return Ok(fotos);
+        }
+
+        [HttpPost("{id:int}/fotos")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadFotoPosto([FromRoute] int id, [FromForm] UploadPostoFotoDto dto)
+        {
+            try
+            {
+                var foto = dto.Foto;
+                if (foto == null || foto.Length == 0)
+                    return BadRequest("Nenhuma foto foi enviada.");
+
+                var postoExiste = await _context.Postos.AnyAsync(p => p.Id == id);
+                if (!postoExiste) return NotFound("Posto não encontrado.");
+
+                var webRoot = _env.WebRootPath;
+                if (string.IsNullOrWhiteSpace(webRoot))
+                {
+                    webRoot = Path.Combine(_env.ContentRootPath, "wwwroot");
+                }
+
+                var uploadsFolder = Path.Combine(webRoot, "uploads", "postos");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                var nomeOriginal = Path.GetFileName(foto.FileName);
+                var nomeUnico = Guid.NewGuid().ToString() + "_" + nomeOriginal;
+                var caminhoFisicoArquivo = Path.Combine(uploadsFolder, nomeUnico);
+
+                using (var stream = new FileStream(caminhoFisicoArquivo, FileMode.Create))
+                {
+                    await foto.CopyToAsync(stream);
+                }
+
+                var urlImagem = $"/uploads/postos/{nomeUnico}";
+
+                var novaFoto = new PostoFoto
+                {
+                    PostoId = id,
+                    UrlImagem = urlImagem
+                };
+
+                _context.PostoFotos.Add(novaFoto);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { mensagem = "Foto enviada com sucesso!", url = urlImagem });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERRO NO UPLOAD: {ex.Message}");
+                return StatusCode(500, "Erro interno ao salvar a imagem.");
+            }
         }
 
         [HttpPost]
