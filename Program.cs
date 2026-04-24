@@ -86,6 +86,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Seed de roles padrão (por exemplo, "User")
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
@@ -110,7 +111,6 @@ if (app.Environment.IsDevelopment())
 builder.WebHost.UseUrls("http://0.0.0.0:5265");
 //app.UseHttpsRedirection();
 app.UseCors("AllowAll");
-app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

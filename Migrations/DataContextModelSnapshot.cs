@@ -253,26 +253,6 @@ namespace gasosa_backend.Migrations
                     b.ToTable("postos", (string)null);
                 });
 
-            modelBuilder.Entity("gasosa_backend.Models.PostoFoto", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("PostoId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("UrlImagem")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("PostoFotos");
-                });
-
             modelBuilder.Entity("gasosa_backend.Models.Usuario", b =>
                 {
                     b.Property<string>("Id")
