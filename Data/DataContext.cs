@@ -12,6 +12,8 @@ public class DataContext : IdentityDbContext<Usuario>
 
     public DbSet<PostoFoto> PostoFotos { get; set; }
 
+    public DbSet<PrecoCombustivel> PrecosCombustiveis => Set<PrecoCombustivel>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -44,6 +46,29 @@ public class DataContext : IdentityDbContext<Usuario>
             entity.HasOne(a => a.Usuario)
                 .WithMany()
                 .HasForeignKey(a => a.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PrecoCombustivel>(entity =>
+        {
+            entity.ToTable("precos_combustiveis");
+
+            entity.HasKey(p => p.Id);
+
+            entity.Property(p => p.TipoCombustivel)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(p => p.Preco)
+                .HasPrecision(5, 2)
+                .IsRequired();
+
+            entity.Property(p => p.DataCadastro)
+                .IsRequired();
+
+            entity.HasOne(p => p.Posto)
+                .WithMany()
+                .HasForeignKey(p => p.PostoId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
