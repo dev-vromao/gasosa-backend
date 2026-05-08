@@ -15,6 +15,7 @@ public class DataContext : IdentityDbContext<Usuario>
     public DbSet<PasswordResetCode> PasswordResetCodes { get; set; }
 
     public DbSet<AvaliacaoVoto> AvaliacaoVotos => Set<AvaliacaoVoto>();
+    public DbSet<PrecoCombustivel> PrecosCombustiveis => Set<PrecoCombustivel>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -75,6 +76,27 @@ public class DataContext : IdentityDbContext<Usuario>
             entity.HasOne(v => v.Usuario)
                 .WithMany()
                 .HasForeignKey(v => v.UsuarioId)
+        });
+        builder.Entity<PrecoCombustivel>(entity =>
+        {
+            entity.ToTable("precos_combustiveis");
+
+            entity.HasKey(p => p.Id);
+
+            entity.Property(p => p.TipoCombustivel)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(p => p.Preco)
+                .HasPrecision(5, 2)
+                .IsRequired();
+
+            entity.Property(p => p.DataCadastro)
+                .IsRequired();
+
+            entity.HasOne(p => p.Posto)
+                .WithMany()
+                .HasForeignKey(p => p.PostoId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

@@ -177,6 +177,47 @@ namespace gasosa_backend.Controllers
             return CreatedAtAction(nameof(GetPostoById), new { id = posto.Id }, response);
         }
 
+        [HttpPost("{id:int}/precos")]
+        public async Task<IActionResult> CadastrarPrecoCombustivel(
+            [FromRoute] int id,
+            [FromBody] CreatePrecoCombustivelDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var postoExiste = await _context.Postos.AnyAsync(p => p.Id == id);
+            if (!postoExiste) return NotFound("Posto não encontrado.");
+
+            if (string.IsNullOrWhiteSpace(dto.TipoCombustivel))
+                return BadRequest("Tipo de combustível é obrigatório.");
+
+            if (dto.Preco <= 0)
+                return BadRequest("O preço deve ser maior que zero.");
+
+            if (dto.Preco < 1 || dto.Preco > 15)
+                return BadRequest("O preço deve estar entre R$ 1,00 e R$ 15,00.");
+
+            var novoPreco = new PrecoCombustivel
+            {
+                PostoId = id,
+                TipoCombustivel = dto.TipoCombustivel,
+                Preco = dto.Preco,
+                DataCadastro = DateTime.UtcNow
+            };
+
+            _context.PrecosCombustiveis.Add(novoPreco);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                mensagem = "Preço cadastrado com sucesso!",
+                novoPreco.Id,
+                novoPreco.PostoId,
+                novoPreco.TipoCombustivel,
+                novoPreco.Preco,
+                novoPreco.DataCadastro
+            });
+        }
+
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeletePosto([FromRoute] int id)
         {

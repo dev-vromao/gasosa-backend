@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -10,9 +11,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace gasosa_backend.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20260507124834_AddPrecosCombustiveis")]
+    partial class AddPrecosCombustiveis
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -209,69 +212,6 @@ namespace gasosa_backend.Migrations
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("avaliacoes", (string)null);
-                });
-
-            modelBuilder.Entity("gasosa_backend.Models.AvaliacaoVoto", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AvaliacaoId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("DataVoto")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsLike")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("UsuarioId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AvaliacaoId");
-
-                    b.HasIndex("UsuarioId", "AvaliacaoId")
-                        .IsUnique();
-
-                    b.ToTable("avaliacao_votos", (string)null);
-                });
-
-            modelBuilder.Entity("gasosa_backend.Models.PasswordResetCode", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(6)
-                        .HasColumnType("character varying(6)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("Used")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("password_reset_codes", (string)null);
                 });
 
             modelBuilder.Entity("gasosa_backend.Models.Posto", b =>
@@ -512,25 +452,6 @@ namespace gasosa_backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Posto");
-
-                    b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("gasosa_backend.Models.AvaliacaoVoto", b =>
-                {
-                    b.HasOne("gasosa_backend.Models.Avaliacao", "Avaliacao")
-                        .WithMany()
-                        .HasForeignKey("AvaliacaoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("gasosa_backend.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Avaliacao");
 
                     b.Navigation("Usuario");
                 });
