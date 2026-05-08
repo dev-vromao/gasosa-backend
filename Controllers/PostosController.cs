@@ -177,6 +177,28 @@ namespace gasosa_backend.Controllers
             return CreatedAtAction(nameof(GetPostoById), new { id = posto.Id }, response);
         }
 
+        [HttpGet("{id:int}/precos")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPrecosCombustivel([FromRoute] int id)
+        {
+            var postoExiste = await _context.Postos.AnyAsync(p => p.Id == id);
+            if (!postoExiste) return NotFound("Posto não encontrado.");
+
+            var precos = await _context.PrecosCombustiveis
+                .Where(p => p.PostoId == id)
+                .OrderByDescending(p => p.DataCadastro)
+                .Select(p => new
+                {
+                    id = p.Id,
+                    tipoCombustivel = p.TipoCombustivel,
+                    preco = p.Preco,
+                    dataCadastro = p.DataCadastro
+                })
+                .ToListAsync();
+
+            return Ok(precos);
+        }
+
         [HttpPost("{id:int}/precos")]
         public async Task<IActionResult> CadastrarPrecoCombustivel(
             [FromRoute] int id,

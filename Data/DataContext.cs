@@ -76,6 +76,7 @@ public class DataContext : IdentityDbContext<Usuario>
             entity.HasOne(v => v.Usuario)
                 .WithMany()
                 .HasForeignKey(v => v.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
         builder.Entity<PrecoCombustivel>(entity =>
         {

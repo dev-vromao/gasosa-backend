@@ -35,6 +35,14 @@ namespace gasosa_backend.Controllers
             var usuario = await _userManager.GetUserAsync(User);
             if (usuario == null) return Unauthorized("Usuário não autenticado.");
 
+            // Apenas uma avaliação por usuário por posto
+            var jaAvaliou = await _context.Avaliacoes
+                .AnyAsync(a => a.PostoId == dto.PostoId && a.UsuarioId == usuario.Id);
+            if (jaAvaliou)
+            {
+                return Conflict(new { message = "Você já avaliou este posto." });
+            }
+
             var novaAvaliacao = new Avaliacao
             {
                 PostoId = dto.PostoId,
