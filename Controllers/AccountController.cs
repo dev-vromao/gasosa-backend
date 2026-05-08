@@ -1,11 +1,9 @@
-﻿using gasosa_backend.Models;
+using gasosa_backend.Models;
 using gasosa_backend.Interfaces;
+using gasosa_backend.Dtos.Account;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Text;
 
 namespace gasosa_backend.Controllers
 {
@@ -16,18 +14,21 @@ namespace gasosa_backend.Controllers
         private readonly UserManager<Usuario> _userManager;
         private readonly ITokenService _tokenService;
         private readonly SignInManager<Usuario> _signInManager;
-        private readonly IWebHostEnvironment _environment;
+        private readonly IEmailService _emailService;
+        private readonly DataContext _context;
 
         public AccountController(
             UserManager<Usuario> userManager,
             ITokenService tokenService,
             SignInManager<Usuario> signInManager,
-            IWebHostEnvironment environment)
+            IEmailService emailService,
+            DataContext context)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _signInManager = signInManager;
-            _environment = environment;
+            _emailService = emailService;
+            _context = context;
         }
 
         [HttpPost("login")]
@@ -105,24 +106,67 @@ namespace gasosa_backend.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Sempre retorna a mesma mensagem para não revelar se o email existe
             var user = await _userManager.FindByEmailAsync(forgotPasswordDto.Email);
-
             if (user == null)
             {
-                return Ok(new
-                {
-                    message = "Se o email estiver cadastrado, você receberá instruções para redefinir a senha."
-                });
+                return Ok(new { message = "Se o email estiver cadastrado, você receberá um código de verificação." });
             }
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            // Invalida códigos anteriores do mesmo email
+            var codigosAntigos = await _context.PasswordResetCodes
+                .Where(c => c.Email == forgotPasswordDto.Email && !c.Used)
+                .ToListAsync();
 
-            return Ok(new
+            foreach (var codigo in codigosAntigos)
+                codigo.Used = true;
+
+            // Gera código de 6 dígitos
+            var code = new Random().Next(100000, 999999).ToString();
+
+            _context.PasswordResetCodes.Add(new PasswordResetCode
             {
-                message = "Token gerado com sucesso",
-                token = token,
-                email = user.Email
+                Email = forgotPasswordDto.Email,
+                Code = code,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+                Used = false,
+                CreatedAt = DateTime.UtcNow
             });
+
+            await _context.SaveChangesAsync();
+
+            await _emailService.SendPasswordResetCodeAsync(forgotPasswordDto.Email, code);
+
+            return Ok(new { message = "Se o email estiver cadastrado, você receberá um código de verificação." });
+        }
+
+        [HttpPost("verify-reset-code")]
+        public async Task<IActionResult> VerifyResetCode([FromBody] VerifyResetCodeDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var resetCode = await _context.PasswordResetCodes
+                .Where(c =>
+                    c.Email == dto.Email &&
+                    c.Code == dto.Code &&
+                    !c.Used &&
+                    c.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(c => c.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (resetCode == null)
+                return BadRequest(new { message = "Código inválido ou expirado." });
+
+            // Marca como usado
+            resetCode.Used = true;
+            await _context.SaveChangesAsync();
+
+            // Gera o token do Identity para reset de senha
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user!);
+
+            return Ok(new { token });
         }
 
         [HttpPost("reset-password")]
@@ -134,19 +178,17 @@ namespace gasosa_backend.Controllers
             var user = await _userManager.FindByEmailAsync(resetPasswordDto.Email);
             if (user == null)
             {
-                return BadRequest("Token inválido ou usuário não encontrado.");
+                return BadRequest(new { message = "Usuário não encontrado." });
             }
 
             var resultado = await _userManager.ResetPasswordAsync(user, resetPasswordDto.Token, resetPasswordDto.NewPassword);
 
-
             if (!resultado.Succeeded)
             {
-                return BadRequest(resultado.Errors.Select(error => error.Description));
+                return BadRequest(new { message = resultado.Errors.Select(e => e.Description) });
             }
 
             return Ok(new { message = "Senha redefinida com sucesso." });
         }
-
     }
 }

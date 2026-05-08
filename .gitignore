@@ -53,3 +53,7 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 .vs/
+
+# Local settings with secrets (never commit)
+appsettings.Development.json
+appsettings.Local.json

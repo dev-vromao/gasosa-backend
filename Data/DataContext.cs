@@ -12,6 +12,10 @@ public class DataContext : IdentityDbContext<Usuario>
 
     public DbSet<PostoFoto> PostoFotos { get; set; }
 
+    public DbSet<PasswordResetCode> PasswordResetCodes { get; set; }
+
+    public DbSet<AvaliacaoVoto> AvaliacaoVotos => Set<AvaliacaoVoto>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -44,6 +48,33 @@ public class DataContext : IdentityDbContext<Usuario>
             entity.HasOne(a => a.Usuario)
                 .WithMany()
                 .HasForeignKey(a => a.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PasswordResetCode>(entity =>
+        {
+            entity.ToTable("password_reset_codes");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Email).HasMaxLength(256).IsRequired();
+            entity.Property(p => p.Code).HasMaxLength(6).IsRequired();
+        });
+
+        builder.Entity<AvaliacaoVoto>(entity =>
+        {
+            entity.ToTable("avaliacao_votos");
+            entity.HasKey(v => v.Id);
+
+            // Um usuário só pode ter um voto por avaliação
+            entity.HasIndex(v => new { v.UsuarioId, v.AvaliacaoId }).IsUnique();
+
+            entity.HasOne(v => v.Avaliacao)
+                .WithMany()
+                .HasForeignKey(v => v.AvaliacaoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(v => v.Usuario)
+                .WithMany()
+                .HasForeignKey(v => v.UsuarioId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

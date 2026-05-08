@@ -65,12 +65,17 @@ namespace gasosa_backend.Controllers
             var postoExiste = await _context.Postos.AnyAsync(p => p.Id == postoId);
             if (!postoExiste) return NotFound("Posto não encontrado.");
 
+            // Tenta identificar o usuário se ele estiver autenticado (endpoint é público)
+            var usuario = await _userManager.GetUserAsync(User);
+            var meuId = usuario?.Id;
+
             var avaliacoes = await _context.Avaliacoes
                 .Where(a => a.PostoId == postoId)
+                .OrderByDescending(a => a.Id)
                 .Select(a => new
                 {
                     id = a.Id,
-                    // Para o frontend, usamos a nota geral como "média" de estrelas
+                    usuarioId = a.UsuarioId,
                     mediaEstrelas = (double)a.NotaGeral,
                     comentario = a.Comentario,
                     temLojaConveniencia = a.TemLojaConveniencia,
@@ -79,12 +84,85 @@ namespace gasosa_backend.Controllers
                     temTrocaOleo = a.TemTrocaOleo,
                     temAreaDescanso = a.TemAreaDescanso,
                     temCarregadorEletrico = a.TemCarregadorEletrico,
-                    diasAtras = (DateTime.UtcNow - a.DataAvaliacao).Days
+                    diasAtras = (DateTime.UtcNow - a.DataAvaliacao).Days,
+                    totalLikes = _context.AvaliacaoVotos.Count(v => v.AvaliacaoId == a.Id && v.IsLike),
+                    totalDislikes = _context.AvaliacaoVotos.Count(v => v.AvaliacaoId == a.Id && !v.IsLike),
+                    meuVoto = meuId == null
+                        ? null
+                        : _context.AvaliacaoVotos
+                            .Where(v => v.AvaliacaoId == a.Id && v.UsuarioId == meuId)
+                            .Select(v => v.IsLike ? "like" : "dislike")
+                            .FirstOrDefault(),
+                    eMinha = meuId != null && a.UsuarioId == meuId
                 })
-                .OrderByDescending(a => a.id)
                 .ToListAsync();
 
             return Ok(avaliacoes);
+        }
+
+        [HttpPost("{id}/voto")]
+        [Authorize]
+        public async Task<IActionResult> Votar(int id, [FromBody] VotoDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var avaliacao = await _context.Avaliacoes.FirstOrDefaultAsync(a => a.Id == id);
+            if (avaliacao == null) return NotFound(new { message = "Avaliação não encontrada." });
+
+            var usuario = await _userManager.GetUserAsync(User);
+            if (usuario == null) return Unauthorized(new { message = "Usuário não autenticado." });
+
+            // Não permite votar na própria avaliação
+            if (avaliacao.UsuarioId == usuario.Id)
+                return BadRequest(new { message = "Você não pode votar na sua própria avaliação." });
+
+            var votoExistente = await _context.AvaliacaoVotos
+                .FirstOrDefaultAsync(v => v.AvaliacaoId == id && v.UsuarioId == usuario.Id);
+
+            string acao;
+
+            if (votoExistente == null)
+            {
+                // Sem voto → cria
+                _context.AvaliacaoVotos.Add(new AvaliacaoVoto
+                {
+                    AvaliacaoId = id,
+                    UsuarioId = usuario.Id,
+                    IsLike = dto.IsLike,
+                    DataVoto = DateTime.UtcNow
+                });
+                acao = "criado";
+            }
+            else if (votoExistente.IsLike == dto.IsLike)
+            {
+                // Mesmo tipo → remove (toggle off)
+                _context.AvaliacaoVotos.Remove(votoExistente);
+                acao = "removido";
+            }
+            else
+            {
+                // Tipo diferente → troca
+                votoExistente.IsLike = dto.IsLike;
+                votoExistente.DataVoto = DateTime.UtcNow;
+                acao = "atualizado";
+            }
+
+            await _context.SaveChangesAsync();
+
+            var totalLikes = await _context.AvaliacaoVotos.CountAsync(v => v.AvaliacaoId == id && v.IsLike);
+            var totalDislikes = await _context.AvaliacaoVotos.CountAsync(v => v.AvaliacaoId == id && !v.IsLike);
+
+            string? meuVoto = acao == "removido"
+                ? null
+                : (dto.IsLike ? "like" : "dislike");
+
+            return Ok(new
+            {
+                acao,
+                totalLikes,
+                totalDislikes,
+                meuVoto
+            });
         }
     }
 }
