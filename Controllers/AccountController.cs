@@ -31,6 +31,22 @@ namespace gasosa_backend.Controllers
             _context = context;
         }
 
+        [HttpGet("me")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> Me()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            return Ok(new
+            {
+                nome = user.Nome,
+                email = user.Email,
+                banido = user.Banido,
+                creditosSociais = user.CreditosSociais
+            });
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto loginDto)
         {
@@ -49,7 +65,8 @@ namespace gasosa_backend.Controllers
             {
                 Nome = user.Nome,
                 Email = user.Email ?? string.Empty,
-                Token = _tokenService.CreateToken(user)
+                Token = _tokenService.CreateToken(user),
+                Banido = user.Banido
             });
         }
 
@@ -91,7 +108,8 @@ namespace gasosa_backend.Controllers
                 {
                     Nome = usuario.Nome,
                     Email = usuario.Email ?? string.Empty,
-                    Token = _tokenService.CreateToken(usuario)
+                    Token = _tokenService.CreateToken(usuario),
+                    Banido = usuario.Banido
                 });
             }
             else

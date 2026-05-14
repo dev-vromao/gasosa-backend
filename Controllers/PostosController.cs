@@ -1,4 +1,5 @@
 ﻿using gasosa_backend.Dtos.Postos;
+using gasosa_backend.Filters;
 using gasosa_backend.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -75,6 +76,7 @@ namespace gasosa_backend.Controllers
 
         [HttpPost("{id:int}/fotos")]
         [Consumes("multipart/form-data")]
+        [BloqueiaBanido]
         public async Task<IActionResult> UploadFotoPosto([FromRoute] int id, [FromForm] UploadPostoFotoDto dto)
         {
             try
@@ -128,6 +130,7 @@ namespace gasosa_backend.Controllers
         }
 
         [HttpPost]
+        [BloqueiaBanido]
         public async Task<IActionResult> CreatePosto([FromBody] CreatePostoDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -200,6 +203,7 @@ namespace gasosa_backend.Controllers
         }
 
         [HttpPost("{id:int}/precos")]
+        [BloqueiaBanido]
         public async Task<IActionResult> CadastrarPrecoCombustivel(
             [FromRoute] int id,
             [FromBody] CreatePrecoCombustivelDto dto)
@@ -241,6 +245,7 @@ namespace gasosa_backend.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        [BloqueiaBanido]
         public async Task<IActionResult> DeletePosto([FromRoute] int id)
         {
             var usuarioId = GetUsuarioId();
